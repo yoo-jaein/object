@@ -1,12 +1,12 @@
 # Chapter 02 객체지향 프로그래밍
 ## 객체지향
-객체지향 프로그램을 작성할 때 대부분의 사람들은 먼저 어떤 클래스가 필요한지 고민한다. 안타깝게도 클래스 자체는 객체지향의 본질과는 거리가 멀다. 진정한 객체지향 패러다임으로의 전환은 클래스가 아닌 객체에 초점을 맞출 때에만 얻을 수 있다.  
+객체지향 프로그램을 작성할 때 대부분의 사람들은 먼저 어떤 클래스가 필요한지 고민한다. 안타깝게도 클래스 자체는 객체지향의 본질과는 거리가 멀다. 진정한 객체지향 패러다임으로의 전환은 클래스가 아닌 **객체에 초점을 맞출 때**에만 얻을 수 있다.  
 
 **1. 어떤 객체들이 필요한지 고민하라.**  
 **2. 객체를 협력하는 공동체의 일원으로 봐라.**
 
 ## 도메인
-객체지향 패러다임이 강력한 이유는 요구사항을 분석하는 초기 단계부터 프로그램을 구현하는 마지막 단계까지 객체라는 동일한 추상화 기법을 사용할 수 있기 때문이다. 일반적으로 클래스 이름은 대응되는 도메인 개념 이름과 동일하거나 유사하게 지어야 한다. 클래스 사이의 관계도 최대한 도메인 개념 사이에 맺어진 관계와 유사하게 만들어서 프로그램의 구조를 이해하고 예상하기 쉽게 만들어야 한다.  
+객체지향 패러다임이 강력한 이유는 요구사항을 분석하는 초기 단계부터 프로그램을 구현하는 마지막 단계까지 **객체라는 동일한 추상화 기법**을 사용할 수 있기 때문이다. 일반적으로 클래스 이름은 대응되는 도메인 개념 이름과 동일하거나 유사하게 지어야 한다. 클래스 사이의 관계도 최대한 도메인 개념 사이에 맺어진 관계와 유사하게 만들어서 프로그램의 구조를 이해하고 예상하기 쉽게 만들어야 한다.  
 
 | 개념           | 클래스                |
 |----------------|-----------------------|
@@ -129,6 +129,12 @@ public class Movie {
 
 여기서는 부모 클래스인 DiscountPolicy 안에 중복 코드를 두고 두 클래스가 이 클래스를 상속받게 했다. DiscountPolicy는 **추상 클래스**(abstract class)로 구현했다.  
 
+> **추상 클래스**  
+> 1. abstract가 명시된 클래스이다.  
+> 2. 구현부가 없는 상태로 선언된 메서드인 추상 메서드를 포함할 수 있다.  
+> 3. 상속을 위한 클래스이기 때문에 인스턴스를 생성할 수 없다.  
+> 4. 예시 : GraphicObject 추상 클래스를 상속하는 Rectangle, Line, Circle 클래스
+
 ```java
 public abstract class DiscountPolicy {
   private List<DiscountCondition> conditions = new ArrayList<>();
@@ -143,7 +149,6 @@ public abstract class DiscountPolicy {
         return getDiscountAmount(screening);
       }
     }
-    
     return Money.ZERO;
   }
   
@@ -194,6 +199,13 @@ public interface DiscountCondition {
 
 영화 예매 시스템의 할인 조건은 순번 조건 SequenceCondition, 기간 조건 PeriodCondition으로 구분된다. DiscountCondition은 인터페이스를 이용해 선언되었다.  
 
+> **인터페이스**
+> 1. 모든 필드가 public static final로 해석되며, 모든 메서드는 추상 메서드로 간주된다.
+> 2. 클래스에 의해 구현되거나 다른 인터페이스에 의해 상속될 수 있다. 다중 상속이 가능하다.
+> 3. 인스턴스를 생성할 수 없다.
+> 4. 자바 8부터 default를 통해 일반 메서드 구현이 가능해졌다.
+> 5. 예시 : 자동차 표준 기술이 담긴 OperateCar 인터페이스를 구현하는 OperateBMW760i, OperateToyota86, OperateHyundaii30 
+
 ```java
 public class SequenceCondition implements DiscountCondition {
   private int sequence;
@@ -228,6 +240,17 @@ public class PeriodCondition implements DiscountCondition {
 }
 ```
 
+## 추상 클래스 vs 인터페이스
+### 추상 클래스 적용하기
+1. 연관된 클래스들 사이에 코드를 공유하는 경우
+2. protected나 private 필드, 메서드를 선언하려는 경우
+3. non-static이나 non-final 필드를 선언하려는 경우
+
+### 인터페이스 적용하기
+1. 인터페이스를 구현할 클래스들이 서로 관련이 없는 경우
+   - Comparable, Cloneable 인터페이스는 관련 없는 수많은 클래스에서 구현된다.
+2. 다중 상속을 사용하려는 경우
+
 ## 생성자로 객체 보장하기
 
 ## 컴파일 시점 의존성과 런타임 의존성
@@ -235,3 +258,8 @@ public class PeriodCondition implements DiscountCondition {
 ## 다형성
 
 ## 결론
+
+## 참고
+https://docs.oracle.com/javase/tutorial/java/IandI/abstract.html  
+https://docs.oracle.com/javase/tutorial/java/concepts/interface.html  
+https://docs.oracle.com/javase/tutorial/java/IandI/createinterface.html
