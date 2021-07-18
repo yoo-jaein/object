@@ -191,13 +191,7 @@ public class PercentDiscountPolicy extends DiscountPolicy {
 이처럼 부모 클래스에 기본적인 기능 구현을 하고 중간에 필요한 처리를 자식 클래스에게 위임하는 디자인 패턴을 **템플릿 메서드 패턴**이라 한다.
 
 ## 인터페이스
-```java
-public interface DiscountCondition {
-  boolean isSatisfiedBy(Screening screening);
-}
-```
-
-영화 예매 시스템의 할인 조건은 순번 조건 SequenceCondition, 기간 조건 PeriodCondition으로 구분된다. DiscountCondition은 인터페이스를 이용해 선언되었다.  
+영화 예매 시스템의 할인 조건은 순번 조건 SequenceCondition, 기간 조건 PeriodCondition으로 구분된다. DiscountCondition은 **인터페이스**(interface)를 이용해 선언되었다.  
 
 > **인터페이스**
 > 1. 모든 필드가 public static final로 해석되며, 모든 메서드는 추상 메서드로 간주된다.
@@ -205,6 +199,12 @@ public interface DiscountCondition {
 > 3. 인스턴스를 생성할 수 없다.
 > 4. 자바 8부터 default를 통해 일반 메서드 구현이 가능해졌다.
 > 5. 예시 : 자동차 표준 기술이 담긴 OperateCar 인터페이스를 구현하는 OperateBMW760i, OperateToyota86, OperateHyundaii30 
+
+```java
+public interface DiscountCondition {
+  boolean isSatisfiedBy(Screening screening);
+}
+```
 
 ```java
 public class SequenceCondition implements DiscountCondition {
@@ -242,22 +242,87 @@ public class PeriodCondition implements DiscountCondition {
 
 ## 추상 클래스 vs 인터페이스
 ### 추상 클래스 적용하기
-1. 연관된 클래스들 사이에 코드를 공유하는 경우
+1. 연관된 클래스들 사이에 구현 코드를 공유하는 경우
 2. protected나 private 필드, 메서드를 선언하려는 경우
 3. non-static이나 non-final 필드를 선언하려는 경우
 
 ### 인터페이스 적용하기
 1. 인터페이스를 구현할 클래스들이 서로 관련이 없는 경우
-   - Comparable, Cloneable 인터페이스는 관련 없는 수많은 클래스에서 구현된다.
+   - 예시 : Comparable, Cloneable 인터페이스는 관련 없는 수많은 클래스에서 구현된다.
 2. 다중 상속을 사용하려는 경우
 
-## 생성자로 객체 보장하기
+## 컴파일 시간 의존성과 실행 시간 의존성
+다시 돌아가서 Movie 내부에 구체적인 할인 정책을 결정하는 코드가 없는데도 어떻게 적절한 정책을 선택할 수 있을까? 이는 컴파일 시간 의존성과 실행 시간 의존성이 다르기 때문이다.  
 
-## 컴파일 시점 의존성과 런타임 의존성
+```java
+//...
+private DiscountPolicy discountPolicy;
+
+public Money calculateMovieFee(Screening screening) {
+  return fee.minus(discountPolicy.calculateDiscountAmount(screening));
+}
+```
+
+코드 수준에서 Movie 클래스는 오직 추상 클래스인 DiscountPolicy에만 의존하고 있다. 이제 Movie의 인스턴스를 생성하는 코드를 살펴보자.
+
+```java
+Movie avatar = new Movie("아바타", Duration.ofMinutes(120), Money.wons(10000), new AmountDiscountPolicy(Money.wons(800)));
+```
+
+Movie의 인스턴스를 생성할 때 금액 할인 정책을 적용하고 싶다면 인자로 AmountDiscountPolicy의 인스턴스를 전달하면 된다. 이제 실행 시에 Movie의 인스턴스는 AmountDiscountPolicy의 인스턴스에 의존하게 된다. 마찬가지로 비율 할인 정책을 적용하고 싶다면 PercentDiscountPolicy의 인스턴스를 전달하면 된다. 그러면 실행 시에 Movie의 인스턴스는 PercentDiscountPolicy의 인스턴스에 의존하게 된다. **다시 말해 클래스 사이의 의존성과 객체 사이의 의존성은 동일하지 않을 수 있다.**
+
+Movie는 협력하는 객체가 calculateDiscountAmount 메시지를 이해할 수 있다면 그 객체가 어떤 클래스의 인스턴스인지는 상관하지 않는다. 따라서 해당 메시지를 수신할 수 있는 AmountDiscountPolicy, PercentDiscountPolicy가 부모 클래스인 DiscountPolicy를 대신해서 Movie와 협력할 수 있다. 이처럼 자식 클래스가 부모 클래스를 대신하는 것을 **업캐스팅**(upcasting)이라고 부른다.
+
+### 주의!
+컴파일 시간 의존성과 실행 시간 의존성이 다르면, 설계가 유연해지고 확장 가능해진다. 설계가 유연해질수록 코드를 이해하고 디버깅하기 점점 더 어려워진다. 설계의 유연성을 억제하면 코드를 이해하고 디버깅하기는 쉬워지지만, 재사용성과 확장 가능성이 낮아진다. **무조건 유연한 설계도, 무조건 읽기 쉬운 코드도 정답이 아니다.** 
 
 ## 다형성
+Movie는 calculateDiscountAmount라는 동일한 메시지를 전송하지만 실제로 어떤 메서드가 실행될 것인지는 메시지를 수신하는 객체의 클래스가 무엇이냐에 따라 달라진다. 이를 **다형성**이라고 부른다. 다형성은 컴파일 시간 의존성과 실행 시간 의존성을 다르게 만들 수 있는 객체지향의 특성을 이용해 서로 다른 메서드를 실행할 수 있게 한다.  
+
+메시지와 메서드를 실행 시점에 바인딩하는 것을 **지연 바인딩**(lazy binding) 또는 **동적 바인딩**(dynamic binding)이라고 부른다. 반대로 컴파일할 때 어떤 함수를 실행할지 결정하는 것을 **초기 바인딩**(early binding) 또는 **정적 바인딩**(static binding)이라고 부른다. 객체지향은 지연 바인딩 메커니즘을 사용한다.
+
+## 추상화
+지금까지 할인 정책은 추상 클래스로, 할인 조건은 인터페이스로 각각 추상화 작업을 했다. 이렇게 추상화를 사용하면 두 가지 장점이 있다.  
+
+1. 요구사항의 정책을 높은 수준에서 서술할 수 있다. 즉, 협력의 흐름을 나타낼 수 있다. (그림 2.13)
+2. 기존 구조를 수정하지 않고도 새로운 기능을 쉽게 추가할 수 있다. 따라서 설계가 유연해진다. (그림 2.14)
+
+## 상속 vs 합성
+합성은 다른 객체의 인스턴스를 자신의 인스턴스 변수로 포함해서 재사용하는 방법을 말한다.
+
+```java
+public class Movie {
+  private DiscountPolicy discountPolicy;
+  //...
+```
+
+Movie가 DiscountPolicy의 코드를 재사용하는 방법이 합성이다. 이 설계를 상속을 사용하도록 변경할 수도 있다. 
+
+```java
+public class Movie {...}
+public class AmountDiscountMovie extends Movie {...}
+public class PercentDiscountMovie extends Movie {...}
+```
+
+Movie를 상속받는 두 개의 자식 클래스를 추가하면 합성을 사용한 기존 방법과 기능적인 관점에서 완벽히 동일하다. 그럼에도 많은 사람들이 상속 대신 합성을 선호하는 이유는 무엇일까?
+
+### 상속
+상속은 두 가지 관점에서 설계에 안 좋은 영향을 미친다.
+
+1. 상속이 캡슐화를 위반한다.
+   - 부모 클래스의 구현이 자식 클래스에게 노출되어 캡슐화가 약화된다. 상속은 결합도를 높이기 때문에 부모 클래스를 변경할 때 자식 클래스도 함께 변경될 확률을 높인다.
+2. 설계를 유연하지 못하게 만든다.
+   - 상속은 부모 클래스와 자식 클래스 사이의 관계를 컴파일 시점에 결정한다. 실행 시점에 객체의 종류를 변경하는 것이 불가능하다.
+
+### 합성
+합성이 상속과 다른 점은 Movie가 DiscountPolicy의 인터페이스를 통해 약하게 결합된다는 것이다. Movie는 calculateDiscountAmount 메시지만 알고 내부 구현에 대해서는 전혀 알지 못한다. 합성은 상속이 가지는 두 가지 문제점을 모두 해결한다.
+
+1. 인터페이스에 정의된 메시지를 통해서만 재사용이 가능하기 때문에 구현을 효과적으로 캡슐화한다.
+2. 의존하는 인스턴스를 교체하는 것이 비교적 쉽기 때문에 설계를 유연하게 만든다.
 
 ## 결론
+1. 객체지향에서 가장 중요한 것은 객체다. 클래스는 객체지향 프로그래밍을 구성하는 하나의 요소일 뿐이다.
+2. 클래스, 추상 클래스, 인터페이스를 조합해서 객체지향 프로그램을 구조화할 수 있다. 그 과정에서 상속과 합성을 적절히 사용하고 설계의 유연성과 코드의 가독성 사이에서 항상 고민해야 한다.
 
 ## 참고
 https://docs.oracle.com/javase/tutorial/java/IandI/abstract.html  
