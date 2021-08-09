@@ -65,11 +65,152 @@ General Responsibility Assignment Software Pattern, GRASP은 객체지향 소프
 설계는 트레이드오프 활동이다. 동일한 기능을 구현할 수 있는 무수히 많은 설계가 존재한다. 따라서 실제로 설계를 진행하다 보면 몇 가지 설계 중에서 한 가지를 선택해야 하는 일이 빈번하게 발생한다. 이 경우 ```Information expert``` 패턴과 ```Low coupling```, ```High cohesion``` 패턴을 함께 고려할 필요가 있다.  
 
 ## 설계 3단계: 창조자 결정하기
+영화 예매 협력의 최종 결과물은 Reservation 인스턴스를 생성하는 것이다. 이것은 협력하는 어떤 객체에게 Reservation 인스턴스를 생성할 책임을 할당해야 한다는 것을 의미한다. 여기서 ```Creator``` 패턴을 사용하여 설계해보자. 
 
+Reservation을 잘 알고 있거나, 긴밀하게 사용하거나, 초기화에 필요한 데이터를 가지고 있는 객체는 무엇인가? 바로 Screening이다. 
 
 ## 설계 4단계: 코드 작성하기
+Screening부터 구현하자. Screening은 '예매하라' 메시지에 응답할 수 있어야 한다. 이 메시지를 처리할 메서드를 만들고, 책임을 수행하는 데 필요한 인스턴스 변수를 결정하자. 
+
+```java
+public class Screening {
+    private Movie movie;
+    private int sequence;
+    private LocalDateTime whenScreened;
+    
+    public Reservation reserve(Customer customer, int audienceCount) {
+        return new Reservation(customer, this, calculateFee(audienceCount), audienceCount);
+    }
+    
+    private Money calculateFee(int audienceCount) {
+        return movie.calculateMovieFee(this).times(audienceCount);
+    }
+}
+```
+
+Screening을 구현하는 과정에서 Movie에 전송하는 메시지의 시그니처를 calculateMovieFee(Screening screening)으로 선언했다. 이 메시지는 Movie가 아니라 메시지의 송신자인 Screening의 의도를 표현한다. 이처럼 Movie의 구현을 고려하지 않고 필요한 메시지를 결정하면 Movie의 내부 구현을 깔끔하게 캡슐화할 수 있다. 또한, 메시지를 기반으로 협력을 구성했기 때문에 Screening과 Movie 사이의 결합도를 느슨하게 유지할 수 있다. 
+
+```java
+public class Movie {
+    private String title;
+    private Duration runningTime;
+    private Money fee;
+    private List<DiscountCondition> discountConditions;
+    
+    private MovieType movieType;
+    private Money discountAmount;
+    private double discountPercent;
+    
+    public Money calculateMovieFee(Screening screening) {
+        if (isDiscountable(screening)) {
+            return fee.minus(calculateDiscountAmount());
+        }
+        
+        return fee;
+    }
+    
+    private boolean isDiscountable(Screening screening) {
+        return discountConditions
+                .stream()
+                .anyMatch(condition -> condition.isSatisfiedBy(screening));
+    }
+    
+    private Money calculateDiscountAmount() {
+        switch(movieType) {
+          case AMOUNT_DISCOUNT:
+              return calculateAmountDiscountAmount(); 
+          case PERCENT_DISCOUNT:
+              return calculatePercentDiscountAmount();
+          case NONE_DISCOUNT:
+              return calculateNoneDiscountAmount();
+        }
+        
+        throw new IllegalStateException();
+    }
+    
+    private Money calculateAmountDiscountAmount() {
+        return discountAmount;
+    }
+    
+    private Money calculatePercentDiscountAmount() {
+        return fee.times(discountAmount);
+    }
+    
+    private Money calculateNoneDiscountAmount() {
+        return Money.ZERO;
+    }
+}
+```
+
+```java
+public enum MovieType {
+    AMOUNT_DISCOUNT,    // 금액 할인 정책 
+    PERCENT_DISCOUNT,   // 비율 할인 정책
+    NONE_DISCOUNT       // 미적용
+}
+```
+
+
+```java
+public class DiscountCondition {
+    private DiscountConditionType type;
+    private int sequence;
+    private DayOfWeek dayOfWeek;
+    private LocalTime startTime;
+    private LocalTime endTime;
+    
+    public boolean isSatisfiedBy(Screening screening) {
+        if (type == DiscountConditionType.PERIOD) {
+            return isSatisfiedByPeriod(screening);
+        }
+        
+        return isSatisfiedBySequence(screening);
+    }
+    
+    private boolean isSatisfiedByPeriod(Screening screening) {
+        return dayOfWeek.equals(screening.getWhenScreened().getDayOfWeek()) &&
+                startTime.compareTo(screening.getWhenScreened().toLocalTime()) <= 0 &&
+                endTime.isAfter(screening.getWhenScreened().toLocalTime()) >= 0;
+    }
+    
+    private boolean isSatisfiedBySequence(Screening screening) {
+        return sequence == screening.getSequence();
+    }
+}
+```
+
+```java
+public class Screening {
+    //...
+    public LocalDateTime getWhenScreened() {
+        return whenScreened;
+    }
+    
+    public int getSequence() {
+        return sequence;
+    }
+}
+```
+
+```java
+public enum DiscountConditionType {
+    SEQUENCE,       // 순번 조건
+    PERIOD          // 기간 조건
+}
+```
 
 ## 개선 1단계: 낮은 응집도를 위한 클래스 분리하기
+### 현재 문제점
+#### 새로운 할인 조건 추가
+#### 순번 조건을 판단하는 로직 변경
+#### 기간 조건을 판단하는 로직 변경
+
+### 클래스 응집도 판단하기
+
+### 타입 분리하기
+
+### 다형성을 통해 분리하기
+
 
 ## 개선 2단계: 객체를 자율적으로 만들기
 
