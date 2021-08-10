@@ -202,15 +202,100 @@ public enum DiscountConditionType {
 ## 개선 1단계: 낮은 응집도를 위한 클래스 분리하기
 ### 현재 문제점
 #### 새로운 할인 조건 추가
+새로운 할인 조건이 추가되면 isSatisfiedBy 메서드 안의 if ~ else 구문을 수정해야 한다. 새로운 데이터가 필요한 경우 DiscountCondition에 속성을 추가해야 한다.
+
 #### 순번 조건을 판단하는 로직 변경
+isSatisfiedBySequence 메서드 안의 내부 구현을 수정해야 한다. 로직에 필요한 데이터가 변경되면 sequence 속성도 변경해야 한다.
+
 #### 기간 조건을 판단하는 로직 변경
+isSatisfiedByPeriod 메서드 안의 내부 구현을 수정해야 한다. 로직에 필요한 데이터가 변경되면 dayOfWeek, startTime, endTime 속성도 변경해야 한다.
 
 ### 클래스 응집도 판단하기
-
+클래스의 응집도를 판단할 수 있는 세 가지 방법
+1. 클래스가 하나 이상의 이유로 변경돼야 한다면 응집도가 낮은 것이다.  
+2. 클래스의 인스턴스를 초기화하는 시점에 경우에 따라 서로 다른 속성들을 초기화하고 있다면 응집도가 낮은 것이다.  
+3. 메서드 그룹이 속성 그룹을 사용하는지 여부로 나뉜다면 응집도가 낮은 것이다.  
+  
 ### 타입 분리하기
+DiscountCondition의 가장 큰 문제는 순번 조건과 기간 조건이라는 두 개의 독립적인 타입이 하나의 클래스 안에 공존하고 있다는 점이다. 가장 먼저, 두 타입을 SequenceCondition과 PeriodCondition이라는 두 개의 클래스로 분리해보자.
+
+```java
+public class SequenceCondition {
+    private int sequence;
+    
+    public SequenceCondition(int sequence) {
+        this.sequence = sequence;
+    }
+    
+    public boolean isSatisfiedBy(Screening screening) {
+        return sequence == screening.getSequence();
+    }
+}
+```
+
+```java
+public class PeriodCondition {
+    private DayOfWeek dayOfWeek;
+    private LocalTime startTime;
+    private LocalTime endTime;
+    
+    public PeriodCondition(DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+        this.dayOfWeek = dayOfWeek;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+    
+    public boolean isSatisfiedBy(Screening screening) {
+        return dayOfWeek.equals(screening.getWhenScreened().getDayOfWeek()) &&
+            startTime.compareTo(screening.getWhenScreened().toLocalTime()) <= 0 &&
+            endTime.compareTo(screening.getWhenScreened().toLocalTime()) >= 0);
+    }
+}
+```
+
+클래스를 분리함으로써 개별 클래스들의 응집도가 향상됐다. 하지만 안타깝게도 클래스를 분리한 후에 새로운 문제가 나타났다. 수정 후에 Movie의 인스턴스는 SequenceCondition과 PeriodCondition이라는 두 개의 서로 다른 클래스의 인스턴스 모두와 협력할 수 있어야 한다. 이를 위해 Movie 클래스 안에는 SequenceCondition List와 PeriodCondition List를 따로 유지하게 되어 결국 Movie 클래스가 양쪽 클래스 모두에 결합된다. 설계의 관점에서 전체적인 결합도가 높아졌다.  
+
+또 다른 문제는 수정 후에 새로운 할인 조건을 추가하기가 더 어려워졌다는 것이다. 새로운 할인 조건 클래스를 담기 위한 List를 추가하고, 이 List를 이용해 할인 조건을 만족하는지 확인하는 메서드를 추가하고, 이 메서드를 호출하도록 isDiscountable 메서드를 수정해야 한다. 변경과 캡슐화라는 관점에서 전체적으로 설계의 품질이 나빠졌다.  
 
 ### 다형성을 통해 분리하기
+사실 Movie의 입장에서 할인 가능 여부를 반환해주기만 하면 그 객체가 SequenceCondition의 인스턴스인지, PeriodCondition의 인스턴스인지 상관하지 않는다. 여기서 **역할**의 개념이 등장한다.  
 
+역할은 협력 안에서 대체 가능성을 의미한다. SequenceCondition과 PeriodCondition에 역할의 개념을 적용하면 Movie가 구체적인 클래스에 의존하지 않도록 만들 수 있다. 자바에서는 일반적으로 역할을 구현하기 위해 추상 클래스나 인터페이스를 사용한다. **역할을 대체할 클래스들 사이에서 구현을 공유해야 할 필요가 있다면 추상 클래스를 사용하면 된다. 구현을 공유할 필요 없이 역할을 대체하는 객체들의 책임만 정의하고 싶다면 인터페이스를 사용하면 된다.**  
+
+```java
+public interface DiscountCondition {
+    boolean isSatisfiedBy(Screening screening);
+}
+```
+
+```java
+public class PeriodCondition implements DiscountCondition {...}
+```
+
+```java
+public class SequenceCondition implements DiscountCondition {...}
+```
+
+```java
+public class Movie {
+    private List<DiscountCondition> discountConditions;
+    
+    public Money calculateMovieFee(Screening screening) {
+        if (isDiscountable(screening)) {
+            return fee.minus(calculateDiscountAmount());
+        }
+    
+        return fee;
+    }
+    
+    private boolean isDiscountable(Screening screening) {
+        return discountConditions.stream()
+            .anyMatch(condition -> condition.isSatisfiedBy(screening));
+    }
+}
+```
+
+Movie와 DiscountCondition 사이의 협력은 다형적이다. 위 코드에서 알 수 있듯이 객체의 타입에 따라 행동을 분기해야 한다면 객체의 타입을 분리하고 변화하는 행동을 각 타입의 책임으로 할당함으로써 문제를 해결할 수 있다. GRASP에서는 이를 ```Polymorphism``` 패턴이라고 부른다.
 
 ## 개선 2단계: 객체를 자율적으로 만들기
 
