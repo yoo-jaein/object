@@ -2,10 +2,10 @@
 
 ## 책임 주도 설계
 ### 1. 데이터보다 행동을 먼저 결정하라.
-데이터 중심 설계에서는 "이 객체가 포함해야 하는 데이터가 무엇인가"를 결정한 후에 "데이터를 처리하는 데 필요한 오퍼레이션은 무엇인가"를 결정한다. 반면 책임 중심 설계에서는 "이 객체가 수행하야 하는 책임은 무엇인가"를 결정한 후에 "이 책임을 수행하는 데 필요한 데이터는 무엇인가"를 결정한다.  
+데이터 중심 설계에서는 "이 객체가 포함해야 하는 데이터가 무엇인가"를 결정한 후에 "데이터를 처리하는 데 필요한 오퍼레이션은 무엇인가"를 결정한다. 반면 책임 중심 설계에서는 "이 객체가 수행하야 하는 책임은 무엇인가"를 결정한 후에 "이 책임을 수행하는 데 필요한 데이터는 무엇인가"를 결정한다.
 
 ### 2. 협력이라는 문맥 안에서 책임을 결정하라.
-객체의 입장에서 책임이 조금 어색해 보이더라도 협력에 적합하다면 그 책임은 좋은 것이다. 객체를 결정한 후에 메시지를 선택하는 것이 아니라 메시지를 결정한 후에 객체를 선택해야 한다. 
+객체의 입장에서 책임이 조금 어색해 보이더라도 협력에 적합하다면 그 책임은 좋은 것이다. 객체를 결정한 후에 메시지를 선택하는 것이 아니라 메시지를 결정한 후에 객체를 선택해야 한다.
 
 ## GRASP 패턴
 General Responsibility Assignment Software Pattern, GRASP은 객체지향 소프트웨어 개발 프로젝트에서 공통적으로 나타나는 문제를 해결하기 위한 패턴이다. 객체에게 책임을 할당할 때 지침으로 삼을 수 있는 9가지 원칙들을 안내한다.
@@ -114,7 +114,6 @@ public class Movie {
                 .stream()
                 .anyMatch(condition -> condition.isSatisfiedBy(screening));
     }
-    
     private Money calculateDiscountAmount() {
         switch(movieType) {
           case AMOUNT_DISCOUNT:
@@ -124,7 +123,6 @@ public class Movie {
           case NONE_DISCOUNT:
               return calculateNoneDiscountAmount();
         }
-        
         throw new IllegalStateException();
     }
     
@@ -201,18 +199,195 @@ public enum DiscountConditionType {
 
 ## 개선 1단계: 낮은 응집도를 위한 클래스 분리하기
 ### 현재 문제점
-#### 새로운 할인 조건 추가
-#### 순번 조건을 판단하는 로직 변경
-#### 기간 조건을 판단하는 로직 변경
+#### 1. 새로운 할인 조건 추가
+새로운 할인 조건이 추가되면 isSatisfiedBy 메서드 안의 if ~ else 구문을 수정해야 한다. 새로운 데이터가 필요한 경우 DiscountCondition에 속성을 추가해야 한다.
+
+#### 2. 순번 조건을 판단하는 로직 변경
+isSatisfiedBySequence 메서드 안의 내부 구현을 수정해야 한다. 로직에 필요한 데이터가 변경되면 sequence 속성도 변경해야 한다.
+
+#### 3. 기간 조건을 판단하는 로직 변경
+isSatisfiedByPeriod 메서드 안의 내부 구현을 수정해야 한다. 로직에 필요한 데이터가 변경되면 dayOfWeek, startTime, endTime 속성도 변경해야 한다.
 
 ### 클래스 응집도 판단하기
+클래스의 응집도를 판단할 수 있는 세 가지 방법
+1. 클래스가 하나 이상의 이유로 변경돼야 한다면 응집도가 낮은 것이다.
+2. 클래스의 인스턴스를 초기화하는 시점에 경우에 따라 서로 다른 속성들을 초기화하고 있다면 응집도가 낮은 것이다.
+3. 메서드 그룹이 속성 그룹을 사용하는지 여부로 나뉜다면 응집도가 낮은 것이다.
 
 ### 타입 분리하기
+DiscountCondition의 가장 큰 문제는 순번 조건과 기간 조건이라는 두 개의 독립적인 타입이 하나의 클래스 안에 공존하고 있다는 점이다. 가장 먼저, 두 타입을 SequenceCondition과 PeriodCondition이라는 두 개의 클래스로 분리해보자.
+
+```java
+public class SequenceCondition {
+    private int sequence;
+    
+    public SequenceCondition(int sequence) {
+        this.sequence = sequence;
+    }
+    
+    public boolean isSatisfiedBy(Screening screening) {
+        return sequence == screening.getSequence();
+    }
+}
+```
+
+```java
+public class PeriodCondition {
+    private DayOfWeek dayOfWeek;
+    private LocalTime startTime;
+    private LocalTime endTime;
+    
+    public PeriodCondition(DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+        this.dayOfWeek = dayOfWeek;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+    
+    public boolean isSatisfiedBy(Screening screening) {
+        return dayOfWeek.equals(screening.getWhenScreened().getDayOfWeek()) &&
+            startTime.compareTo(screening.getWhenScreened().toLocalTime()) <= 0 &&
+            endTime.compareTo(screening.getWhenScreened().toLocalTime()) >= 0;
+    }
+}
+```
+
+클래스를 분리함으로써 개별 클래스들의 응집도가 향상됐다. 하지만 안타깝게도 클래스를 분리한 후에 새로운 문제가 나타났다. 수정 후에 Movie의 인스턴스는 SequenceCondition과 PeriodCondition이라는 두 개의 서로 다른 클래스의 인스턴스 모두와 협력할 수 있어야 한다. 이를 위해 Movie 클래스 안에는 SequenceCondition List와 PeriodCondition List를 따로 유지하게 되어 결국 Movie 클래스가 양쪽 클래스 모두에 결합된다. 설계의 관점에서 전체적인 결합도가 높아졌다.
+
+또 다른 문제는 수정 후에 새로운 할인 조건을 추가하기가 더 어려워졌다는 것이다. 새로운 할인 조건 클래스를 담기 위한 List를 추가하고, 이 List를 이용해 할인 조건을 만족하는지 확인하는 메서드를 추가하고, 이 메서드를 호출하도록 isDiscountable 메서드를 수정해야 한다. 변경과 캡슐화라는 관점에서 전체적으로 설계의 품질이 나빠졌다.
 
 ### 다형성을 통해 분리하기
+사실 Movie의 입장에서 할인 가능 여부를 반환해주기만 하면 그 객체가 SequenceCondition의 인스턴스인지, PeriodCondition의 인스턴스인지 상관하지 않는다. 여기서 **역할**의 개념이 등장한다.
 
+역할은 협력 안에서 대체 가능성을 의미한다. SequenceCondition과 PeriodCondition에 역할의 개념을 적용하면 Movie가 구체적인 클래스에 의존하지 않도록 만들 수 있다. 자바에서는 일반적으로 역할을 구현하기 위해 추상 클래스나 인터페이스를 사용한다. **역할을 대체할 클래스들 사이에서 구현을 공유해야 할 필요가 있다면 추상 클래스를 사용하면 된다. 구현을 공유할 필요 없이 역할을 대체하는 객체들의 책임만 정의하고 싶다면 인터페이스를 사용하면 된다.**
 
-## 개선 2단계: 객체를 자율적으로 만들기
+```java
+public interface DiscountCondition {
+    boolean isSatisfiedBy(Screening screening);
+}
+```
+
+```java
+public class PeriodCondition implements DiscountCondition {...}
+```
+
+```java
+public class SequenceCondition implements DiscountCondition {...}
+```
+
+```java
+public class Movie {
+    private List<DiscountCondition> discountConditions;
+    
+    public Money calculateMovieFee(Screening screening) {
+        if (isDiscountable(screening)) {
+            return fee.minus(calculateDiscountAmount());
+        }
+    
+        return fee;
+    }
+    
+    private boolean isDiscountable(Screening screening) {
+        return discountConditions.stream()
+            .anyMatch(condition -> condition.isSatisfiedBy(screening));
+    }
+}
+```
+
+Movie와 DiscountCondition 사이의 협력은 다형적이다. 위 코드에서 알 수 있듯이 **객체의 타입에 따라 행동을 분기해야 한다면 객체의 타입을 분리하고 변화하는 행동을 각 타입의 책임으로 할당함**으로써 문제를 해결할 수 있다. GRASP에서는 이를 ```Polymorphism``` 패턴이라고 부른다.
+
+새로운 조건이 추가되는 경우 DiscountCondition 인터페이스를 실체화하는 클래스를 추가하는 것만으로 확장할 수 있게 되었다. 이처럼 **변경을 캡슐화하도록 책임을 할당하는 것**을 GRASP에서는 ```Protected variations``` 패턴이라고 부른다. ```Polymorphism``` 패턴으로 역할을 분리하고, ```Protected variations``` 패턴으로 인터페이스 뒤로 변경을 캡슐화했다. 그 결과 변경과 확장에 유연하게 대처할 수 있는 설계를 얻게 되었다.
+
+Movie 클래스 역시 DiscountCondition과 동일한 문제를 겪고 있으므로 해결 방법도 동일하게 적용한다.
+
+### 변경과 유연성
+개발자로서 변경에 대비할 수 있는 두 가지 방법이 있다. 하나는 코드를 이해하고 수정하기 쉽도록 최대한 단순하게 설계하는 것이다. 다른 하나는 코드를 수정하지 않고도 변경을 수용할 수 있도록 최대한 단순하게 설계하는 것이다. **대부분의 경우에 전자가 더 좋은 방법이지만 유사한 변경이 반복적으로 발생하고 있다면 복잡성이 상승하더라도 유연성을 추가하는 두 번째 방법이 더 좋다.**
+
+## 개선 2단계: 몬스터 메서드 해체하기
+영화 예매를 처리하는 ReservationAgency 코드를 살펴보자.
+
+```java
+public class ReservationAgency {
+    public Reservation reserve(Screening screening, Customer customer, int audienceCount) {  // (1)
+        Movie movie = screening.getMovie();
+        
+        boolean discountable = false;
+        for (DiscountCondition condition : movie.getDiscountConditions()) {
+            if (condition.getType() == DiscountConditionType.PERIOD) {
+                discountable = screening.getWhenScreened().getDayOfWeek().equals(condition.getDayOfWeek()) &&
+                    condition.getStartTime().compareTo(screening.getWhenScreened().toLocalTime()) <= 0 &&
+                    condition.getEndTime().compareTo(screening.getWhenScreened().toLocalTime()) >= 0;
+            } else {
+                discountable = condition.getSequence() == screening.getSequence();
+            }
+        }
+        
+        Money fee;
+        if (discountable) {
+            Money discountAmount = Money.ZERO;
+            switch (movie.getMovieType()) {
+                case AMOUNT_DISCOUNT:
+                    discountAmount = movie.getDiscountAmount();
+                    break;
+                case PERCENT_DISCOUNT:
+                    discountAmount = movie.getFee().times(movie.getDiscountPercent());
+                    break;
+                case NONE_DISCOUNT:
+                    discountAmount = Money.ZERO;
+                    break;
+            }
+            
+            fee = movie.getFee().minus(discountAmount).times(audienceCount);
+        } else {
+            fee = movie.getFee().times(audienceCount);
+        }
+        return new Reservation(customer, screening, fee, audienceCount);
+    }
+}
+```
+
+(1) : reserve 메서드는 길이가 너무 길고 이해하기도 어렵다. 긴 메서드는 응집도가 낮기 때문에 재사용하기도 어렵고 변경하기도 어렵다. 이런 메서드를 몬스터 메서드(monster method)라고 부른다.
+
+긴 메서드를 작고 응집도 높은 메서드로 분리해보자.
+
+```java
+public class ReservationAgency {
+    public Reservation reserve(Screening screening, Customer customer, int audienceCount) { // (1)
+        boolean discountable = checkDiscountable(screening);
+        Money fee = calculateFee(screening, discountable, audienceCount);
+        return createReservation(screening, customer, audienceCount, fee);
+    }
+    
+    private boolean checkDiscountable(Screening screening) {
+        return screening.getMovie().getDiscountConditions().stream()
+            .anyMatch(condition -> isDiscountable(condition, screening));
+    }
+    
+    private boolean isDiscountable(DiscountCondition condition, Screening screening) {
+        if (condition.getType() == DiscountConditionType.PERIOD) {
+            return isSatisfiedByPeriod(condition, screening);
+        }
+        
+        return isSatisfiedBySequence(condition, screening);
+    }
+    
+    private boolean isSatisfiedByPeriod(DiscountCondition condition, Screening screening) {
+        return screening.getWhenScreened().getDayOfWeek().equals(condition.getDayOfWeek()) &&
+            condition.getStartTime().compareTo(screening.getWhenScreened().toLocalTime()) <= 0 &&
+            condition.getEndTime().compareTo(screening.getWhenScreened().toLocalTime()) >= 0;
+    }
+    
+    private boolean isSatisfiedBySequence(DiscountCondition condition, Screening screening) {
+        return condition.getSequence() == screening.getSequence();
+    }
+    //...
+```
+
+(1) : 수정 후에는 reserve 메서드가 무슨 일을 하는지 한 눈에 알아볼 수 있다. 코드를 작은 메서드들로 분해하면 전체적인 흐름을 이해하기가 쉬워진다. 세부적인 정보가 필요하다면 그때 각 메서드의 세부 구현을 확인하면 된다.
+
+메서드의 응집도 자체는 높아졌지만 이 메서드들을 담고 있는 ReservationAgency 클래스의 응집도는 여전히 낮다. ReservationAgency의 응집도를 높이기 위해 변경의 이유가 다른 메서드들을 적절한 위치로 분배해야 한다.
+
+## 개선 3단계: 자율적인 객체 만들기
+어떤 메서드를 어떤 클래스로 이동시켜야 할까? 객체가 자율적인 존재여야 한다는 사실을 잊지 말자. 따라서 메서드가 사용하는 데이터를 가지고 있는 클래스로 메서드를 이동시키면 된다. 어떤 데이터를 사용하는지를 가장 쉽게 알 수 있는 방법은 메서드 안에서 어떤 클래스의 접근자(getter) 메서드를 사용하는지 파악하는 것이다.  
 
 ## 결론
 
