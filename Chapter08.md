@@ -64,6 +64,7 @@ public class Movie {
 	private PercentDiscountPolicy percentDiscountPolicy;
 	
 	public Movie(String title, Duration runningTime, Money fee, PercentDiscountPolicy percentDiscountPolicy) {
+		//...
 		this.percentDiscountPolicy = percentDiscountPolicy;
     }
     
@@ -100,6 +101,7 @@ public class Movie {
 	private DiscountPolicy discountPolicy;
 	
 	public Movie(String title, Duration runningTime, Money fee) {
+		//...
 		this.discountPolicy = new AmountDiscountPolicy(...);
     }
 }
@@ -115,6 +117,7 @@ public class Movie {
 	private DiscountPolicy discountPolicy;
 	
 	public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+		//...
 		this.discountPolicy = discountPolicy;
     }
 }
@@ -181,6 +184,7 @@ public class Movie {
 	private DiscountPolicy discountPolicy;
 	
 	public Movie(String title, Duration runningTime, Money fee) {
+		//...
 		this.discountPolicy = new AmountDiscountPolicy(
 				Money.wons(800),
                 new SequenceCondition(1),
@@ -220,12 +224,142 @@ Movie avatar = new Movie(
         ));
 ```
 
-사용과 생성의 책임을 분리하면 Movie의 결합도가 낮아지고 설계를 유연하게 만들 수 있다. 
+사용과 생성의 책임을 분리하면 Movie의 결합도가 낮아지고 설계를 유연하게 만들 수 있다.  
 
-가끔은 클래스 안에서 객체의 인스턴스를 직접 생성하는 방식이 유용한 경우도 있다. 협력하는 기본 객체를 설정하고 싶은 경우가 여기에 속한다.
+가끔은 클래스 안에서 객체의 인스턴스를 직접 생성하는 방식이 유용한 경우도 있다. 협력하는 기본 객체를 설정하고 싶은 경우가 여기에 속한다.  
 
+```java
+public class Movie {
+	private DiscountPolicy discountPolicy;
+	
+	public Movie(String title, Duration runningTime, Money fee) {
+		this(title, runningTime, fee, new AmountDiscountPolicy(...));
+    }
+    
+    public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+        //...
+		this.discountPolicy = discountPolicy;
+    }
+}
+```
 
+만약 Movie가 대부분의 경우 AmountDiscountPolicy의 인스턴스와 협력하고 아주 가끔 PercentDiscountPolicy의 인스턴스와 협력한다면, 객체의 생성자 안에서 AmountDiscountPolicy의 인스턴스를 생성하도록 구성할 수 있다. 이 방법은 메서드 오버로딩에도 사용할 수 있다.
+
+```java
+public class Moive {
+	public Movie calculateMovieFee(Screening screening) {
+		return calculateMovieFee(screening, new AmountDiscountPolicy(...));
+    }
+    
+    public Movie calculateMovieFee(Screening screening, DiscountPolicy discountPolicy) {
+		return fee.minus(discountPolicy.calculateDiscountAmount(screening));
+    }
+}
+```
 
 ## 컨텍스트 확장하기
+이제 Movie가 유연하고 재사용 가능한 설계라는 사실을 입증하기 위해 Movie를 확장하는 두 가지 예를 살펴 보자.
+
+### 확장 1: 할인 혜택을 제공하지 않는 영화
+가장 쉽게 생각할 수 있는 방법은 discountPolicy에 null 값을 할당하는 것이다.
+
+```java
+public class Movie {
+	public Movie(String title, Duration runningTime, Money fee) {
+		this(title, runningTime, fee, null); // (1)
+    }
+    
+    public Moive(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+		//...
+        this.discountPolicy = discountPolicy;
+    }
+    
+    public Money calculateMovieFee(Screening screening) {
+		if (discountPolicy == null) { // (2)
+			return fee;
+		}
+		
+		return fee.minus(discountPolicy.calculateDiscountAmount(screening));
+    }
+}
+```
+
+(1) : 기본값으로 null을 할당하고 있다.  
+(2) : calculateMovieFee() 내부에서 discountPolicy의 값이 null인지 체크하고 null인 경우 할인 정책을 적용하지 않는다.  
+
+이 코드는 제대로 동작하지만 한 가지 문제가 있다. 지금까지의 Movie와 DiscountPolicy 사이의 협력 방식에 어긋나는 예외 케이스가 추가된 것이다. 이를 위해 Movie의 내부 코드를 직접 수정해야 했다. 어떤 경우든 코드 내부를 직접 수정하는 것은 버그의 발생 가능성을 높이는 행동이다. 더 나은 해결책은 예외 케이스로 처리하지 않고 기존 협력 방식을 따르도록 만드는 것이다. 다시 말해 '할인 정책이 존재하지 않음'을 할인 정책의 한 종류로 간주하는 것이다.  
+
+```java
+public class NoneDiscountPolicy extends DiscountPolicy {
+	@Override
+    protected Money getDiscountAmount(Screening screening) {
+		return Money.ZERO;
+    }
+}
+```
+
+```java
+Movie avatar = new Movie(
+		"아바타",
+        Duration.ofMinutes(120),
+        Money.wons(10000),
+        new NoneDiscountPolicy());
+```
+
+이제 Movie에서 예외 케이스를 위한 if 문을 추가하지 않고도 요구사항을 구현할 수 있게 되었다. 
+
+### 확장 2: 중복 적용이 가능한 할인 정책
+중복 할인이란 금액 할인 정책과 비율 할인 정책을 혼합해서 적용하는 정책을 의미한다. 가장 간단하게 구현할 수 있는 방법은 Movie가 DiscountPolicy의 인스턴스들로 구성된 List를 인스턴스 변수로 갖게 하는 것이다.
+
+```java
+public class Movie {
+	private List<DiscountPolicy> discountPolicies = new ArrayList<>();
+
+	public Money calculateMovieFee(Screening screening) {
+		Money result = Money.ZERO;
+		
+		for (DiscountPolicy each : discountPolicies) {
+			if (each instanceof AmountDiscountPolicy) {
+				result = result.plus(each.calculateDiscountAmount(screening));
+			} else if (each instanceof PercentDiscountPolicy) {
+				result = result.plus(each.calculateDiscountAmount(screening));
+			}
+		}
+
+		return fee.minus(result);
+	}
+}
+```
+
+하지만 이 방법은 기존의 할인 정책의 협력방식과는 다른 예외 케이스를 추가하게 만든다. 따라서 확장 1과 같은 방법을 사용해서 해결할 수 있다. 중복 할인 정책을 할인 정책의 한 종류로 간주하는 것이다. OverlappedDiscountPolicy를 DiscountPolicy의 자식 클래스로 만들어 기존의 Movie와 DiscountPolicy 사이의 협력 방식을 수정하지 않고도 요구사항을 구현할 수 있다. 
+
+```java
+public class OverlappedDiscountPolicy extends DiscountPolicy {
+	private List<DiscountPolicy> discountPolicies = new ArrayList<>();
+	
+	public OverlappedDiscountPolicy(DiscountPolicy ... discountPolicies) {
+		this.discountPolicies = Arrays.asList(discountPolicies);
+    }
+    
+    @Override 
+    protected Money getDiscountAmount(Screening screening) {
+		Money result = Money.ZERO;
+		for (DiscountPolicy each : discountPolicies) {
+			result = result.plus(each.calculateDiscountAmount(screening));
+		}
+		return result;
+    }
+}
+```
+
+```java
+Movie avatar = new Movie(
+		"아바타",
+        Money.wons(10000),
+        new OverlappedDiscountPolicy(
+        	new AmountDiscountPolicy(...),
+            new PercentDiscountPolicy(...)
+        ));
+```
 
 ## 결론
