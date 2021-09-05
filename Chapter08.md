@@ -61,15 +61,15 @@ public class PeriodCondition implements DiscountCondition { // (3)
 
 ```java
 public class Movie {
-	private PercentDiscountPolicy percentDiscountPolicy;
-	
-	public Movie(String title, Duration runningTime, Money fee, PercentDiscountPolicy percentDiscountPolicy) {
-		//...
-		this.percentDiscountPolicy = percentDiscountPolicy;
+    private PercentDiscountPolicy percentDiscountPolicy;
+
+    public Movie(String title, Duration runningTime, Money fee, PercentDiscountPolicy percentDiscountPolicy) {
+        //...
+	this.percentDiscountPolicy = percentDiscountPolicy;
     }
     
     public Money calculateMovieFee(Screening screening) {
-		return fee.minus(percentDiscountPolicy.calculateDiscountAmount(screening));
+        return fee.minus(percentDiscountPolicy.calculateDiscountAmount(screening));
     }
 }
 ```
@@ -82,7 +82,7 @@ Movie가 비율 할인 정책을 구현하는 PercentDiscountPolicy에 직접 �
 바람직한 의존성은 **재사용성**과 관련이 있다. 위의 예시처럼 어떤 의존성이 다양한 환경에서 클래스를 재사용할 수 없도록 제한한다면 그 의존성은 바람직하지 못한 것이다. 어떤 의존성이 다양한 환경에서 재사용할 수 있다면 그 의존성은 바람직한 것이다. 
 
 ### 의존성과 결합도
-어떤 두 요소 사이에 존재하는 의존성이 바람직할 때 두 요소가 **느슨한 결합도(loose coupling)** 또는 **약한 결합도(weak coupling)**를 가진다고 말한다. 반대로 두 요소 사이의 의존성이 바람직하지 못할 때 **단단한 결합도(tight coupling)** 또는 **강한 결합도(strong coupling)**를 가진다고 말한다.  
+어떤 두 요소 사이에 존재하는 의존성이 바람직할 때 두 요소가 **느슨한 결합도(loose coupling)** 또는 **약한 결합도(weak coupling)** 를 가진다고 말한다. 반대로 두 요소 사이의 의존성이 바람직하지 못할 때 **단단한 결합도(tight coupling)** 또는 **강한 결합도(strong coupling)** 를 가진다고 말한다.  
 
 서로에 대해 알고 있는 지식의 양이 결합도를 결정한다. 더 많이 알수록 더 많이 결합된다. 결합도를 느슨하게 유지하려면 협력하는 대상에 대해 더 적게 알아야 한다. 그러기 위해서 협력하는 대상에 대해 필요한 정보 외에는 최대한 감추는 것이 중요하다. 여기서 추상화를 사용한다.
 
@@ -98,11 +98,11 @@ Movie가 비율 할인 정책을 구현하는 PercentDiscountPolicy에 직접 �
 ## 명시적인 의존성
 ```java
 public class Movie {
-	private DiscountPolicy discountPolicy;
-	
-	public Movie(String title, Duration runningTime, Money fee) {
-		//...
-		this.discountPolicy = new AmountDiscountPolicy(...);
+    private DiscountPolicy discountPolicy;
+    
+    public Movie(String title, Duration runningTime, Money fee) {
+    	//...
+	this.discountPolicy = new AmountDiscountPolicy(...);
     }
 }
 ```
@@ -114,11 +114,11 @@ public class Movie {
 ### 방법 1: 생성자
 ```java
 public class Movie {
-	private DiscountPolicy discountPolicy;
-	
-	public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
-		//...
-		this.discountPolicy = discountPolicy;
+    private DiscountPolicy discountPolicy;
+    
+    public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+    	//...
+	this.discountPolicy = discountPolicy;
     }
 }
 ```
@@ -134,11 +134,11 @@ Movie starWars = new Movie(..., new PercentDiscountPolicy(...));
 ### 방법 2: setter 메서드
 ```java
 public class Movie {
-	private DiscountPolicy discountPolicy;
-
-	public void setDiscountPolicy(DiscountPolicy discountPolicy) {
-		this.discountPolicy = discountPolicy;
-	}
+    private DiscountPolicy discountPolicy;
+    
+    public void setDiscountPolicy(DiscountPolicy discountPolicy) {
+    	this.discountPolicy = discountPolicy;
+    }
 }
 ```
 
@@ -154,10 +154,10 @@ avatar.setDiscountPolicy(new PercentDiscountPolicy(...));
 ### 방법 3: 메서드 인자
 ```java
 public class Movie {
-	private DiscountPolicy discountPolicy;
-	
-	public Money calculateMovieFee(Screening screening, DiscountPolicy discountPolicy) {
-		return fee.minus(discountPolicy.calculateDiscountAmount(screening));
+    private DiscountPolicy discountPolicy;
+
+    public Money calculateMovieFee(Screening screening, DiscountPolicy discountPolicy) {
+        return fee.minus(discountPolicy.calculateDiscountAmount(screening));
     }
 }
 ```
@@ -181,16 +181,16 @@ avatar.calculateMovieFee(..., new AmountDiscountPolicy(...));
 
 ```java
 public class Movie {
-	private DiscountPolicy discountPolicy;
+    private DiscountPolicy discountPolicy;
 	
-	public Movie(String title, Duration runningTime, Money fee) {
-		//...
-		this.discountPolicy = new AmountDiscountPolicy(
-				Money.wons(800),
-                new SequenceCondition(1),
-                new SequenceCondition(10),
-                new PeriodCondition(DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime.of(11, 59)),
-                new PeriodCondition(DayOfWeek.THURSDAY, LocalTime.of(10, 0), LocalTime.of(20, 59))
+    public Movie(String title, Duration runningTime, Money fee) {
+        //...
+        this.discountPolicy = new AmountDiscountPolicy(
+            Money.wons(800),
+            new SequenceCondition(1),
+            new SequenceCondition(10),
+            new PeriodCondition(DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime.of(11, 59)),
+            new PeriodCondition(DayOfWeek.THURSDAY, LocalTime.of(10, 0), LocalTime.of(20, 59))
         );
     }
 }
@@ -202,26 +202,26 @@ Movie 클래스가 AmountDiscountPolicy의 인스턴스를 생성하기 위해�
 
 ```java
 public class Movie {
-	private DiscountPolicy discountPolicy;
+    private DiscountPolicy discountPolicy;
 	
-	public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
-		this.discountPolicy = discountPolicy;
+    public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+        this.discountPolicy = discountPolicy;
     }
 }
 ```
 
 ```java
 Movie avatar = new Movie(
-		"아바타",
-        Duration.ofMinutes(120),
-        Money.wons(10000),
-        new AmountDiscountPolicy(
-        	Money.wons(800),
-            new SequenceCondition(1),
-            new SequenceCondition(10),
-            new PeriodCondition(DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime(11, 59)),
-            new PeriodCondition(DayOfWeek.THURSDAY, LocalTime.of(10, 0), LocalTime(20, 59))
-        ));
+    "아바타",
+    Duration.ofMinutes(120),
+    Money.wons(10000),
+    new AmountDiscountPolicy(
+        Money.wons(800),
+        new SequenceCondition(1),
+        new SequenceCondition(10),
+        new PeriodCondition(DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime(11, 59)),
+        new PeriodCondition(DayOfWeek.THURSDAY, LocalTime.of(10, 0), LocalTime(20, 59))
+    ));
 ```
 
 사용과 생성의 책임을 분리하면 Movie의 결합도가 낮아지고 설계를 유연하게 만들 수 있다.  
@@ -230,15 +230,15 @@ Movie avatar = new Movie(
 
 ```java
 public class Movie {
-	private DiscountPolicy discountPolicy;
+    private DiscountPolicy discountPolicy;
 	
-	public Movie(String title, Duration runningTime, Money fee) {
-		this(title, runningTime, fee, new AmountDiscountPolicy(...));
+    public Movie(String title, Duration runningTime, Money fee) {
+        this(title, runningTime, fee, new AmountDiscountPolicy(...));
     }
     
     public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
         //...
-		this.discountPolicy = discountPolicy;
+        this.discountPolicy = discountPolicy;
     }
 }
 ```
@@ -247,12 +247,12 @@ public class Movie {
 
 ```java
 public class Moive {
-	public Movie calculateMovieFee(Screening screening) {
-		return calculateMovieFee(screening, new AmountDiscountPolicy(...));
+    public Movie calculateMovieFee(Screening screening) {
+        return calculateMovieFee(screening, new AmountDiscountPolicy(...));
     }
     
     public Movie calculateMovieFee(Screening screening, DiscountPolicy discountPolicy) {
-		return fee.minus(discountPolicy.calculateDiscountAmount(screening));
+        return fee.minus(discountPolicy.calculateDiscountAmount(screening));
     }
 }
 ```
@@ -265,21 +265,21 @@ public class Moive {
 
 ```java
 public class Movie {
-	public Movie(String title, Duration runningTime, Money fee) {
-		this(title, runningTime, fee, null); // (1)
+    public Movie(String title, Duration runningTime, Money fee) {
+        this(title, runningTime, fee, null); // (1)
     }
     
     public Moive(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
-		//...
+        //...
         this.discountPolicy = discountPolicy;
     }
     
     public Money calculateMovieFee(Screening screening) {
-		if (discountPolicy == null) { // (2)
-			return fee;
-		}
-		
-		return fee.minus(discountPolicy.calculateDiscountAmount(screening));
+        if (discountPolicy == null) { // (2)
+            return fee;
+        }
+	
+        return fee.minus(discountPolicy.calculateDiscountAmount(screening));
     }
 }
 ```
@@ -291,19 +291,19 @@ public class Movie {
 
 ```java
 public class NoneDiscountPolicy extends DiscountPolicy {
-	@Override
+    @Override
     protected Money getDiscountAmount(Screening screening) {
-		return Money.ZERO;
+        return Money.ZERO;
     }
 }
 ```
 
 ```java
 Movie avatar = new Movie(
-		"아바타",
-        Duration.ofMinutes(120),
-        Money.wons(10000),
-        new NoneDiscountPolicy());
+    "아바타",
+    Duration.ofMinutes(120),
+    Money.wons(10000),
+    new NoneDiscountPolicy());
 ```
 
 이제 Movie에서 예외 케이스를 위한 if 문을 추가하지 않고도 요구사항을 구현할 수 있게 되었다. 
@@ -313,21 +313,21 @@ Movie avatar = new Movie(
 
 ```java
 public class Movie {
-	private List<DiscountPolicy> discountPolicies = new ArrayList<>();
+    private List<DiscountPolicy> discountPolicies = new ArrayList<>();
 
-	public Money calculateMovieFee(Screening screening) {
-		Money result = Money.ZERO;
-		
-		for (DiscountPolicy each : discountPolicies) {
-			if (each instanceof AmountDiscountPolicy) {
-				result = result.plus(each.calculateDiscountAmount(screening));
-			} else if (each instanceof PercentDiscountPolicy) {
-				result = result.plus(each.calculateDiscountAmount(screening));
-			}
-		}
-
-		return fee.minus(result);
-	}
+    public Money calculateMovieFee(Screening screening) {
+        Money result = Money.ZERO;
+        
+	for (DiscountPolicy each : discountPolicies) {
+            if (each instanceof AmountDiscountPolicy) {
+                result = result.plus(each.calculateDiscountAmount(screening));
+            } else if (each instanceof PercentDiscountPolicy) {
+                result = result.plus(each.calculateDiscountAmount(screening));
+            }
+        }
+        
+	return fee.minus(result);
+    }
 }
 ```
 
@@ -335,31 +335,31 @@ public class Movie {
 
 ```java
 public class OverlappedDiscountPolicy extends DiscountPolicy {
-	private List<DiscountPolicy> discountPolicies = new ArrayList<>();
+    private List<DiscountPolicy> discountPolicies = new ArrayList<>();
 	
-	public OverlappedDiscountPolicy(DiscountPolicy ... discountPolicies) {
-		this.discountPolicies = Arrays.asList(discountPolicies);
+    public OverlappedDiscountPolicy(DiscountPolicy ... discountPolicies) {
+        this.discountPolicies = Arrays.asList(discountPolicies);
     }
     
     @Override 
     protected Money getDiscountAmount(Screening screening) {
-		Money result = Money.ZERO;
-		for (DiscountPolicy each : discountPolicies) {
-			result = result.plus(each.calculateDiscountAmount(screening));
-		}
-		return result;
+        Money result = Money.ZERO;
+        for (DiscountPolicy each : discountPolicies) {
+            result = result.plus(each.calculateDiscountAmount(screening));
+        }
+        return result;
     }
 }
 ```
 
 ```java
 Movie avatar = new Movie(
-		"아바타",
-        Money.wons(10000),
-        new OverlappedDiscountPolicy(
-        	new AmountDiscountPolicy(...),
-            new PercentDiscountPolicy(...)
-        ));
+    "아바타",
+    Money.wons(10000),
+    new OverlappedDiscountPolicy(
+        new AmountDiscountPolicy(...),
+        new PercentDiscountPolicy(...)
+    ));
 ```
 
 ## 결론
