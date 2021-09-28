@@ -27,3 +27,6 @@ Don't Repeat Yourself, DRY 원칙은 동일한 지식을 중복하지 말라는 
 ## 결론
 1. 상속은 코드 재사용 측면에서 매우 강력한 도구지만 잘못 사용될 경우 큰 문제를 일으킬 수 있다.
 2. 코드 재사용과 관련된 대부분의 경우 상속보다 합성을 선택하는 것이 좋다.
+
+## 참고
+https://en.wikipedia.org/wiki/Don%27t_repeat_yourself  
