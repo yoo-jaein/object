@@ -103,8 +103,15 @@ public class PersonalPlaylist {
 - **이를 해결하려면 상속을 포기해야 한다.**
 
 ## 합성 관계로 변경하기
-- 합성은 구성 요소들을 개별 클래스로 구현한 후 실행 시점에 인스턴스를 조립하는 방법을 사용한다.
-- 따라서 컴파일 의존성에 제한되지 않고 다양한 방식의 런타임 의존성을 구성할 수 있다는 것이 장점이다.
+```java
+Phone phone1 = new Phone(new TaxablePolicy(0.05, new RegularPolicy(...));
+Phone phone2 = new Phone(new TaxablePolicy(0.04, new RateDiscountablePolicy(Money.wons(1000)), new RegularPolicy(...)));
+Phone phone3 = new Phone(new RateDiscountablePolicy(Money.wons(1000), new TaxablePolicy(0.05, new RegularPolicy(...)));
+```
+
+- 합성은 구성 요소들을 개별 클래스로 구현한 후 **실행 시점에 인스턴스를 조립하는 방법을 사용한다.**
+- 따라서 컴파일 의존성에 제한되지 않고 **다양한 방식의 런타임 의존성**을 구성할 수 있다는 것이 장점이다.
+- 또한 ```단일 책임 원칙```을 준수하기 때문에 요구사항을 변경할 때 하나의 클래스만 수정해도 된다.
 
 ## 믹스인
 - Mix-in
